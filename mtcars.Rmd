@@ -1,0 +1,75 @@
+---
+fontsize: 10pt
+output: word_document
+---
+Manual cars are more efficient than Automatics
+========================================================
+
+##Summary
+
+The mtcars dataset records data about a set of 32 types of car.  The question asked was whether manual or automatic cars were more efficient.  Simple linear modelling shows the significant association between manual cars and higher efficiency, however there is significant variability in the efficiency which is not explained by this association.  The addition of a horsepower predictor into the model shows that manual cars in this dataset are a little less powerful but the significant association between manual transmission and efficiency remains.  Assuming that the dataset is representative of the population of cars generally, we can be more than 95% confident that, taking horsepower into account, manual cars are more efficient than automatics.  The predicted size of this effect of transmission alone is 5.3 miles per gallon.
+
+##Initial Analysis
+
+First we must load in the mtcars data from the datasets package.  From the help file we find that "am" is the variable name for transmission and "0" represents automatic, while "1" represents manual.  A table shows us that 19 cars in the dataset are automatic and 13 are manual.  On initial exploratory analysis it appears that in general manuals have better efficiency (Fig. 1).  This is borne out by a simple linear regression using the binary variable for transmission and predicting efficiency in miles per gallon with an intercept of 17.1 and a slope of 7.245 indicating that if you were to switch a car from automatic to manual that it would increase its efficiency by 7.2 miles per gallon.  This is significant with a p value < 0.01.  Figure 2 shows this but the linearity of model is somewhat lost in the binary nature of the predictor variable.
+
+```{r load in data and fit model}
+library(datasets)
+data(mtcars)
+table(mtcars$am)
+fit <- lm(mtcars$mpg~mtcars$am)
+summary(fit)$coefficients
+```
+
+##Multivariable
+
+Clearly the story is not so simple.  There are a number of potential confounding variables which could explain at least some of the association between transmission and efficiency.  Some obvious other contributors would be number of cylinders and gross horsepower.  It is a reasonable assumption that these two variables are, in fact, related to each other and so we will use horsepower as a predictor since it is continuous whereas cylinder number is discrete. 
+
+Figure 3 shows exploratory analysis which suggests a relationship between horsepower and efficiency but perhaps maintaining a place for the predictive value of transmission.  The linear modelling below supports this with transmission retaining significance but horsepower also playing a role in predicting efficiency.  Of note the R squared value increased from 0.36 in the first model to 0.78 indicating a much better explanation for the variation in the second model.  This model predicts that, taking into account the horsepower of the car, a manual is 5 miles per gallon more efficient than an automatic.
+
+```{r multivariate}
+fit2 <- lm(mtcars$mpg ~ mtcars$am + mtcars$hp)
+summary(fit2)$coefficients
+summary(fit2)$r.squared
+summary(fit)$r.squared
+```
+
+Despite the fact that more predictors, such as weight, may improve the fit of the model, if manual cars are, by their nature, lighter and thus more efficient then weight is not independent of transmission type in terms of choosing a car.  To determine whether the linear model is appropriate a residual plot is shown in Figure 4 demonstrating no clear pattern for the data set indicating that the assumption of the linearity of relationship is reasonable.
+
+Having proven a robust model for the relationship between transmission and efficiency, taking into account horsepower, it is a reasonable assumption that this is able to be inferred to cars generally. This is to say that for all cars there is an average of 5 miles per gallon better efficiency among manuals than automatics.
+
+There are some assumptions which must be made to generalize this to all cars. Firstly we must assume that the mtcars dataset is representative of the population of all cars. Secondly we must assume that there are no other confounding variables, measured or unmeasured. The p value for the association is <0.01 meaning that we can be confident the association is unlikely to have arisen by chance.
+
+##Appendix
+
+###Figure 1 - Plot of miles per gallon by transmission type
+```{r Fig.1, echo=FALSE, fig.height=4}
+library(ggplot2)
+par(mfrow = c(1,1))
+boxplot(mpg ~ am, data = mtcars, ylab = "Miles per gallon", names = c("Automatic", "Manual") )
+```
+
+###Figure 2 - Plot of initial linear model incorporating just transmission type
+```{r Fig.2, echo=FALSE, fig.height=2.5}
+g <- ggplot(mtcars, aes(x = am, y = mpg))
+g <- g + xlab("Transmission") + ylab("Efficiency (miles per gallon)")
+g <- g + geom_point()
+g + geom_smooth(method = "lm")
+```
+
+###Figure 3 - Plot of the relationships between horsepower, transmission and efficiency
+```{r Fig.3, echo=FALSE, fig.height=2.5}
+qplot(hp, mpg, data = mtcars, color = factor(am), geom = "line", xlab = "Horsepower", ylab = "Efficiency (miles per gallon)")
+```
+
+###Figure 4 - Residual plot to assess linearity
+```{r Fig.4, echo=FALSE, fig.height=4}
+x <- coef(fit2)[1] + coef(fit2)[2]*mtcars$am + coef(fit2)[3]*mtcars$hp
+y <- resid(fit2)
+data <- data.frame(cbind(x,y))
+plot(x,y, xlab = "Predicted Efficiency (mpg)", ylab="Residuals (mpg)")
+abline(0,0, lwd = 2)
+abline(quantile(y, probs = 0.025),0)
+abline(quantile(y, probs = 0.975),0)
+```
+
